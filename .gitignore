@@ -1,0 +1,6 @@
+*.o
+battledot_client
+battledot_server
+serv_socket
+clients/client_socket_*
+battledot_server.log

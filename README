@@ -1,0 +1,56 @@
+HCL Technologies Software Developer Interview
+Author: Levi Thomas
+Github: leviLThomas
+April 16th, 2022
+
+Description:
+
+	This program utilizes UDP sockets and a multithreaded server which allows it to handle commands from multiple clients. Each client creates a socket 
+	with the directory /clients/client_socket_* with the name of the player at the end of the directory. Players when they join the game and connect their 
+	client must enter -m AAA -j -x # -y#, the player name must be three character, and x and y must be between 1 and 10. These players are added through 
+	the makefile test target. Once the user is finished entering players they must enter -s as a flag on the client execution. This signals the server to 
+	start processing the random targets. It will output the results of the attacks as well as the outcome, the logs are stored in the server log file 
+	battledot_server.log. Currently the program has issues completing its processing. Occaisionally the program suddenly exits, it also occaisionally 
+	creates file remnants in the directory which must be removed by hand.
+
+Included Files:
+	* battledot_server.c
+	* battledot_client.c
+	* battledot.c
+	* battledot.h
+	* Makefile
+	* README
+	* /client
+		* This is where UDP client sockets go
+
+Running Instructions:
+	1. Run make all in the directory with Makefile
+	2. in order to modify the testing you will have to modify the Makefile 'test' target
+	3. If you want a player to join add ./battledot_client -m AAA -j -x # -y # where AAA is the player name and # is a number between 1 and 10.
+	4. Where you want the game to start add ./battledot_client -s
+	5. The server will output the results to both the terminal and battledot_server.log
+
+Notes:
+
+* The program does not consistently complete its task. It will occaisionally exit in the middle of outputting a string. 
+  This has been tested with amounts of players ranging from three to 14 and it does not noticably affect the rate of this problem occuring.
+
+* The program upon executing will often create a file name invalid encoding. It is a socket file and is made separately to the issue above. 
+  Even if the program finishes properly it will appear. It is unknown if this accepts performance. I do speculate that this is due to not 
+  properly closing the server socket since these files appear in the main directory while the client sockets appear in clients/
+
+* I attempted implementing TCP instead of UDP but I ran into issues with executing the server and client. When I would try to start it, 
+  there would be no response from the server and no output.
+
+Resources:
+https://stackoverflow.com/questions/52467531/using-getopt-in-c-to-handle-arguments
+https://www.tutorialspoint.com/what-is-the-use-of-randomize-and-srand-functions-in-c-language
+https://www.educba.com/c-plus-plus-mutex/
+https://stackoverflow.com/questions/23856306/how-to-create-log-file-in-c
+https://stackoverflow.com/questions/41217948/how-to-use-mutex-in-c-for-multithread
+http://www.cas.mcmaster.ca/~qiao/courses/cs3mh3/tutorials/socket.html
+https://www.geeksforgeeks.org/user-datagram-protocol-udp/
+https://www.geeksforgeeks.org/socket-programming-cc/?ref=lbp
+https://stackoverflow.com/questions/5141960/get-the-current-time-in-c
+
+
