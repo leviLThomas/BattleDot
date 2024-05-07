@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/un.h>
 #include <sys/wait.h>
@@ -38,8 +39,7 @@ int main(int argc, char **argv) {
   int startFlag = 0, monikerFlag = 0, joinFlag = 0, xFlag = 0, yFlag = 0;
 
   // Four characters either JOIN or STRT followed by 8 digits, x and y coord
-  // cushioned by 0's
-  char buffer[24] = {0};
+  // cushioned by 0's char buffer[24] = {0};
 
   int opt;
 
@@ -83,21 +83,20 @@ int main(int argc, char **argv) {
 
   // if not start game then check other flags and add JOIN+x+y to buffer
   if (!startFlag) {
-    if (!monikerFlag) {
-      fprintf(stderr, "Error: must specify moniker with -m\n");
+    if (mkdir("./clients", 0777) && errno != EEXIST) {
+      fprintf(stderr, "Failed to create directory for client sockets: %s\n",
+              strerror(errno));
+      return 1;
     }
 
-    if (!xFlag || !yFlag) {
-      fprintf(
-          stderr,
-          "Error: must include both x and y coordinates with -x and -y flag\n");
-    }
-
-    if (!joinFlag) {
-      fprintf(stderr, "Error: must include -j flag to join\n");
+    if (!monikerFlag || (!xFlag || !yFlag) || !joinFlag) {
+      fprintf(stderr,
+              "Error: All necessary flags (-m, -x, -y, -j) must be set\n");
+      return 1;
     }
 
     strcpy(clie_addr.sun_path, strcat(directory, moniker));
+
     strcat(buffer, "JOIN");
     int i = 0;
     for (i = 0; i < 8 - strlen(xChar); i++) {
@@ -119,26 +118,24 @@ int main(int argc, char **argv) {
   size = sizeof(clie_addr);
 
   unlink(clie_addr.sun_path);
-  int test = bind(client, (struct sockaddr *)&clie_addr, size);
-  if (test == -1) {
-    char *s = strerror(errno);
-    fprintf(stderr, "Failed to bind socket: %s\n", s);
+  if (bind(client, (struct sockaddr *)&clie_addr, size) == -1) {
+    fprintf(stderr, "Failed to bind socket: %s\n", strerror(errno));
+    close(client);
+    return 1;
   }
 
   serv_addr.sun_family = AF_UNIX;
   strcpy(serv_addr.sun_path, "./serv_socket");
 
-  test = connect(client, (struct sockaddr *)&serv_addr, size);
-  if (test == -1) {
-    char *s = strerror(errno);
-    fprintf(stderr, "Error connecting to server socket: %s\n", s);
+  if (connect(client, (struct sockaddr *)&serv_addr, size) == -1) {
+    fprintf(stderr, "Error connecting to server socket: %s\n", strerror(errno));
+    close(client);
     return 1;
   }
 
-  test = send(client, buffer, strlen(buffer), 0);
-  if (test == -1) {
-    char *s = strerror(errno);
-    fprintf(stderr, "Error sending request to server socket: %s\n", s);
+  if (send(client, buffer, strlen(buffer), 0) == -1) {
+    fprintf(stderr, "Error sending request to server: %s\n", strerror(errno));
+    close(client);
     return 1;
   }
 
