@@ -33,6 +33,10 @@ test:
 clean:
 	rm -f *.o all
 	rm -f battledot_client
+	rm -f client
+	rm -f server
+	rm -f server_socket
+	rm -f server.log
 	rm -f battledot_server
 	rm -f serv_socket
 	rm -f clients/client_socket_*
