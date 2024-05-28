@@ -1,127 +1,127 @@
-#include <errno.h>
+#include "server.h"
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
-#include <sys/stat.h>
-#include <sys/un.h>
+#include <sys/types.h>
 #include <unistd.h>
 
-#include "battledot.h"
+// get sockaddr, IPv4 or IPv6:
+void *get_in_addr(struct sockaddr *sa) {
+  if (sa->sa_family == AF_INET) {
+    return &(((struct sockaddr_in *)sa)->sin_addr);
+  }
 
-int main(int argc, char **argv) {
-  char buffer[BUF_SIZE], client_path[256];
-  char *name, *x_char, *y_char;
-  int cfd, s_flag, j_flag, n_flag, x_flag, y_flag;
+  return &(((struct sockaddr_in6 *)sa)->sin6_addr);
+}
 
-  struct sockaddr_un server_addr, client_addr;
-  s_flag = j_flag = n_flag = x_flag = y_flag = 0;
+int main(int argc, char *argv[]) {
+  int sockfd, numbytes;
+  struct addrinfo hints, *servinfo, *p;
+  int rv;
+  char s[INET6_ADDRSTRLEN];
 
   int opt;
-  while ((opt = getopt(argc, argv, "sjn:x:y:")) != -1) {
+
+  struct DataPacket packet;
+  memset(&packet, 0, sizeof(packet));
+
+  char buf[MAXDATASIZE];
+  memset(buf, 0, MAXDATASIZE - 1);
+
+  while ((opt = getopt(argc, argv, "h:sjn:x:y:")) != -1) {
     switch (opt) {
     case 's':
-      fprintf(stdout, "Start flag recieved.\n");
-      s_flag = 1;
+      packet.flags |= START;
       break;
     case 'j':
-      fprintf(stdout, "Join flag recieved.\n");
-      j_flag = 1;
+      packet.flags |= JOIN;
       break;
     case 'n':
-      n_flag = 1;
-      name = optarg;
-      snprintf(client_path, sizeof(client_path), "%s%s", CLIENT_PATH, name);
-      fprintf(stdout, "Name flag recieved %s.\n", name);
+      strncpy(packet.name, optarg, sizeof(packet.name));
       break;
     case 'x':
-      x_flag = 1;
-      x_char = optarg;
+      packet.x = htonl(atoi(optarg));
       break;
     case 'y':
-      y_flag = 1;
-      y_char = optarg;
+      packet.y = htonl(atoi(optarg));
       break;
-    case '?':
-      fprintf(stderr, "Invalid character %s entered in command line.\n",
-              (char *)optopt);
-      return 1;
+    default:
+      fprintf(stderr,
+              "usage: %s [-s] or [-j] [-n] name [-x] x_coord [-y] y_coord\n",
+              argv[0]);
+      exit(EXIT_FAILURE);
     }
   }
 
-  if ((cfd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
-    fprintf(stderr, "CLIENT ERROR Failed to create socket: %s\n",
-            strerror(errno));
+  if (strlen(packet.name) < 4 || strlen(packet.name) > 16 ||
+      ntohl(packet.x) < 1 || ntohl(packet.x) > 10 || ntohl(packet.y) < 1 ||
+      ntohl(packet.y) > 10) {
+    fprintf(stderr,
+            "usage: %s [-s] or [-j] [-n] name [-x] x_coord [-y] y_coord\n",
+            argv[0]);
+    exit(EXIT_FAILURE);
+  }
+  memset(&hints, 0, sizeof hints);
+  hints.ai_family = AF_UNSPEC;
+  hints.ai_socktype = SOCK_STREAM;
+
+  rv = getaddrinfo(NULL, PORT, &hints, &servinfo);
+  if (rv != 0) {
+    fprintf(stderr, "getaddrinfo: %s\n", gai_strerror(rv));
     return 1;
   }
-  fprintf(stdout, "CLIENT SUCCESS Successfully created socket\n");
 
-  if (mkdir("./clients", 0777) && errno != EEXIST) {
-    fprintf(stderr, "Failed to create directory for client sockets: %s\n",
-            strerror(errno));
-    return 1;
-  }
-  fprintf(stdout,
-          "CLIENT SUCCESS Successfully created directory for client sockets\n");
-
-  memset(&client_addr, 0, sizeof(client_addr));
-  client_addr.sun_family = AF_UNIX;
-  strncpy(client_addr.sun_path, client_path, sizeof(client_addr.sun_path) - 1);
-
-  fprintf(stdout, "CLIENT SUCCESS client address is %s\n",
-          client_addr.sun_path);
-
-  if (s_flag) {
-    strcat(buffer, "S");
-  } else {
-    strcat(buffer, "J");
-    int i = 0;
-    for (i = 0; i < 8 - strlen(x_char); i++) {
-      strcat(buffer, "0");
+  // loop through all the results and connect to the first we can
+  for (p = servinfo; p != NULL; p = p->ai_next) {
+    sockfd = socket(p->ai_family, p->ai_socktype, p->ai_protocol);
+    if (sockfd == -1) {
+      perror("client: socket");
+      continue;
     }
-    strcat(buffer, x_char);
 
-    for (i = 0; i < 8 - strlen(y_char); i++) {
-      strcat(buffer, "0");
+    if (connect(sockfd, p->ai_addr, p->ai_addrlen) == -1) {
+      close(sockfd);
+      perror("client: connect");
+      continue;
     }
-    strcat(buffer, y_char);
-    fprintf(stdout, "Buffer currently looks like:\n\t%s\n", buffer);
+
+    break;
   }
 
-  server_addr.sun_family = AF_UNIX;
-  strcpy(server_addr.sun_path, "./server_socket");
-
-  if (unlink(client_addr.sun_path) == -1 && errno != ENOENT) {
-    fprintf(stderr, "Failed to unlink socket: %s\n", strerror(errno));
-    close(cfd);
-    return 1;
+  if (p == NULL) {
+    fprintf(stderr, "client: failed to connect\n");
+    return 2;
   }
 
-  if (bind(cfd, (struct sockaddr *)&client_addr, sizeof(client_addr)) == -1) {
-    fprintf(stderr, "Failed to bind socket: %s\n", strerror(errno));
-    close(cfd);
-    return 1;
-  }
-  fprintf(stdout, "CLIENT SUCCESS Successfully bound socket\n");
+  inet_ntop(p->ai_family, get_in_addr((struct sockaddr *)p->ai_addr), s,
+            sizeof s);
+  printf("client: connecting to %s\n", s);
+  freeaddrinfo(servinfo); // all done with this structure
 
-  if (connect(cfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) ==
-      -1) {
-    fprintf(stderr, "Error connecting to server socket: %s\n", strerror(errno));
-    close(cfd);
-    return 1;
+  numbytes = send(sockfd, &packet, sizeof(packet), 0);
+  if (numbytes == -1) {
+    perror("send");
+    exit(EXIT_FAILURE);
+  }
+  printf("client: sent \n\tname: %s\n\tx: %u\n\ty: %u\nto %s\n", packet.name,
+         ntohl(packet.x), ntohl(packet.y), s);
+
+  numbytes = recv(sockfd, buf, MAXDATASIZE - 1, 0);
+  if (numbytes == -1) {
+    perror("recv");
+    exit(EXIT_FAILURE);
   }
 
-  if (send(cfd, buffer, strlen(buffer), 0) == -1) {
-    fprintf(stderr, "Error sending request to server: %s\n", strerror(errno));
-    close(cfd);
-    return 1;
-  }
+  buf[numbytes] = '\0';
 
-  if (close(cfd) == -1) {
-    fprintf(stderr, "CLIENT ERROR Failed to close socket: %s\n",
-            strerror(errno));
-    return 1;
-  }
-  fprintf(stdout, "CLIENT SUCCESS Successfully closed socket\n");
+  printf("client: received '%s'\n", buf);
 
-  return 0;
+  close(sockfd);
+
+  exit(EXIT_SUCCESS);
 }

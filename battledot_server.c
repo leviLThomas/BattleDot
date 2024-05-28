@@ -17,8 +17,8 @@ pthread_mutex_t players;
 pthread_mutex_t log_file;
 pthread_mutex_t server_client;
 
-extern struct Player *front;
-extern struct Player *current;
+extern struct PlayerNode *front;
+extern struct PlayerNode *current;
 
 FILE *logfile;
 time_t localltime;

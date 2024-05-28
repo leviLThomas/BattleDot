@@ -1,43 +1,26 @@
 CC = gcc
-C_FLAGS=-std=gnu89 -g -Wall
+C_FLAGS=-std=c99 -Wall -Wextra -pedantic -pthread
+LDFLAGS = -pthread
 
-all: battledot.o battledot_client battledot_server
+all: battledot.o client server
 
 battledot.o: battledot.c battledot.h
 	$(CC) $(C_FLAGS) -c -o battledot.o battledot.c
 
-battledot_client:	battledot_client.c
-	$(CC) $(C_FLAGS) -pthread -o battledot_client battledot_client.c
+client:	client.c battledot.o battledot.h
+	$(CC) $(C_FLAGS) -pthread -o client client.c
 
-battledot_server:	battledot_server.c battledot.o battledot.h 
-	$(CC) $(C_FLAGS) -pthread -o battledot_server battledot.o battledot_server.c
+server:	server.c battledot.o battledot.h 
+	$(CC) $(C_FLAGS) -pthread -o server battledot.o server.c $(LDFLAGS)
 
 test:
-	./battledot_server &
-
-	./battledot_client -m LUK -j -x 3 -y 9
-	./battledot_client -m JON -j -x 6 -y 10
-	./battledot_client -m MAK -j -x 4 -y 3
-	./battledot_client -m KAS -j -x 7 -y 8
-	./battledot_client -m LZA -j -x 1 -y 5
-	./battledot_client -m LOW -j -x 1 -y 1
-	./battledot_client -m UQI -j -x 2 -y 7
-	./battledot_client -m IOW -j -x 5 -y 8
-	./battledot_client -m OWP -j -x 7 -y 2
-	./battledot_client -m OWL -j -x 9 -y 7
-
-	./battledot_client -s 
-
-	cat ./battledot_server.log
+	./server &
+	./client -j -n Levi -x 5 -y 3
+	./client -j -n Omar -x 7 -y 2
+	./client -j -n Ken -x 6 -y 9
 
 clean:
 	rm -f *.o all
-	rm -f battledot_client
 	rm -f client
 	rm -f server
-	rm -f server_socket
-	rm -f server.log
-	rm -f battledot_server
-	rm -f serv_socket
-	rm -f clients/client_socket_*
-	rm -f battledot_server.log
+	rm -f clients/*
