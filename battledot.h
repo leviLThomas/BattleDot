@@ -1,29 +1,25 @@
+#include <stdint.h>
 #ifndef BATTLEDOT_DOT_H
 #define BATTLEDOT_DOT_H
 
-#define BUF_SIZE 24
-#define SERVER_PATH "./server_socket"
-#define SERVER_PORT 8080
-#define SERVER_IP "127.0.0.1"
-#define CLIENT_PATH "./clients"
+typedef struct {
+  uint32_t x;
+  uint32_t y;
+  uint16_t status;
+} PlayerInfo;
 
-struct PlayerList {
-  struct PlayerNode *head;
-  struct PlayerNode *last;
-};
+typedef struct {
+  struct Node *next;
+  struct Node *prev;
+  PlayerInfo value;
+} Node;
 
-struct PlayerNode {
-  // Three characters and null char
-  char moniker[4];
-  int x_ship;
-  int y_ship;
+typedef struct {
+  Node *head;
+  Node *last;
+} CircularLinkedList;
 
-  // next and previous player in the list
-  struct PlayerNode *next;
-  struct PlayerNode *last;
-};
-
-int checkEmpty();
+int checkEmpty(void);
 void insertPlayer(char moniker[4], int x_ship, int y_ship);
 void removePlayer(struct PlayerNode *loser);
 

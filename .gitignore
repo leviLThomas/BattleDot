@@ -1,12 +1,7 @@
 *.o
-battledot_client
-battledot_server
-serv_socket
-clients/client_socket_*
-battledot_server.log
 client
 server
-client.c
-server.c
 server.log
+.cache/
+compile_commands.json
 

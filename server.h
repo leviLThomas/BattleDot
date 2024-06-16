@@ -1,13 +1,7 @@
-#include "battledot.h"
 #include <arpa/inet.h>
 #include <asm-generic/socket.h>
-#include <errno.h>
 #include <netdb.h>
 #include <netinet/in.h>
-#include <signal.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <sys/unistd.h>
@@ -18,15 +12,18 @@
 
 #define MAX_THREADS 16
 #define MAXDATASIZE 1024 // max number of bytes we can get and send at once
+#define MAXBUFSIZE 512   // max number of bytes we can get and send at once
 #define BACKLOG 10
 #define PORT "8080" // the port client will be connecting to
 
-#define JOIN 0x01
-#define START 0x10
+#define JOIN 0x0001
+#define START 0x0010
+#define EXIT 0x0100
+#define ATTACK 0x1000
 
 struct DataPacket {
-  uint8_t flags;
-  char name[17];
+  uint16_t flags;
+  char buffer[MAXBUFSIZE];
   uint32_t x;
   uint32_t y;
 };

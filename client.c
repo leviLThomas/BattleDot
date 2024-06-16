@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
       packet.flags |= JOIN;
       break;
     case 'n':
-      strncpy(packet.name, optarg, sizeof(packet.name));
+      strncpy(packet.buffer, optarg, sizeof(packet.buffer));
       break;
     case 'x':
       packet.x = htonl(atoi(optarg));
@@ -58,7 +58,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  if (strlen(packet.name) < 4 || strlen(packet.name) > 16 ||
+  if (strlen(packet.buffer) < 4 || strlen(packet.buffer) > 16 ||
       ntohl(packet.x) < 1 || ntohl(packet.x) > 10 || ntohl(packet.y) < 1 ||
       ntohl(packet.y) > 10) {
     fprintf(stderr,
@@ -66,7 +66,7 @@ int main(int argc, char *argv[]) {
             argv[0]);
     exit(EXIT_FAILURE);
   }
-  memset(&hints, 0, sizeof hints);
+  memset(&hints, 0, sizeof(hints));
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
 
@@ -108,18 +108,40 @@ int main(int argc, char *argv[]) {
     perror("send");
     exit(EXIT_FAILURE);
   }
-  printf("client: sent \n\tname: %s\n\tx: %u\n\ty: %u\nto %s\n", packet.name,
+  printf("client: sent \n\tname: %s\n\tx: %u\n\ty: %u\nto %s\n", packet.buffer,
          ntohl(packet.x), ntohl(packet.y), s);
 
-  numbytes = recv(sockfd, buf, MAXDATASIZE - 1, 0);
+  numbytes = recv(sockfd, &packet, sizeof(packet), 0);
   if (numbytes == -1) {
     perror("recv");
     exit(EXIT_FAILURE);
   }
 
-  buf[numbytes] = '\0';
+  packet.buffer[MAXBUFSIZE - 1] = '\0';
+  printf("client: received '%s'\n", packet.buffer);
 
-  printf("client: received '%s'\n", buf);
+  for (;;) {
+    scanf("Enter X: %u", &packet.x);
+    scanf("Enter Y: %u", &packet.y);
+    packet.flags |= ATTACK;
+    numbytes = send(sockfd, &packet, sizeof(packet), 0);
+    if (numbytes == -1) {
+      perror("send");
+      exit(EXIT_FAILURE);
+    }
+
+    numbytes = recv(sockfd, &packet, sizeof(packet), 0);
+    if (numbytes == -1) {
+      perror("recv");
+      exit(EXIT_FAILURE);
+    }
+    packet.buffer[MAXBUFSIZE - 1] = '\0';
+
+    printf("client: received '%s'\n", packet.buffer);
+
+    if (packet.flags & EXIT) // If the server tells us to exit we break;
+      break;
+  }
 
   close(sockfd);
 

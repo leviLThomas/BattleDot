@@ -1,17 +1,15 @@
-CC = gcc
-C_FLAGS=-std=c99 -Wall -Wextra -pedantic -pthread
+CC = bear -- gcc
+C_FLAGS=-std=gnu17 -pipe -g -Wall -Wextra -Wpedantic -pthread
 LDFLAGS = -pthread
 
-all: battledot.o client server
+all: client server
 
-battledot.o: battledot.c battledot.h
-	$(CC) $(C_FLAGS) -c -o battledot.o battledot.c
 
-client:	client.c battledot.o battledot.h
+client:	client.c 
 	$(CC) $(C_FLAGS) -pthread -o client client.c
 
-server:	server.c battledot.o battledot.h 
-	$(CC) $(C_FLAGS) -pthread -o server battledot.o server.c $(LDFLAGS)
+server:	server.c 
+	$(CC) $(C_FLAGS) -pthread -o server server.c $(LDFLAGS)
 
 test:
 	./server &
