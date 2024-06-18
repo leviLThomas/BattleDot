@@ -7,11 +7,11 @@ typedef struct Node {
   struct Node *prev;
   void *value;
 } node_t;
-typedef node_t *Node;
+typedef node_t Node;
 
 typedef struct {
-  Node head;
-  Node tail;
+  Node *head;
+  Node *tail;
   size_t size;
 } cll_t;
 typedef cll_t CircularLinkedList;
@@ -21,6 +21,7 @@ typedef cll_t CircularLinkedList;
  * @return
  */
 void cll_new(CircularLinkedList *cll);
+void cll_destroy(CircularLinkedList *cll);
 Node cll_push_back(CircularLinkedList *cll, void *element);
 void *cll_pop_node(CircularLinkedList *cll, Node node);
 int cll_is_empty(const CircularLinkedList *cll);
