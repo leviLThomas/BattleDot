@@ -1,4 +1,5 @@
 #include "server.h"
+#include "circular_linked_list.h"
 #include <arpa/inet.h>
 #include <asm-generic/socket.h>
 #include <errno.h>
@@ -42,44 +43,10 @@ void *get_in_addr(struct sockaddr *sa) {
 void *handle_client(void *arg) {
   thread_info *tinfo = (thread_info *)arg;
   int client_fd = tinfo->sockfd;
+  int numbytes = 0;
 
   struct DataPacket packet;
-  char buf[MAXDATASIZE];
   memset(&packet, 0, sizeof(packet));
-
-  int numbytes = read(client_fd, &packet, sizeof(packet));
-  if (numbytes > 0) {
-    tinfo->pinfo = packet;
-
-    packet.x = ntohl(packet.x);
-    packet.y = ntohl(packet.y);
-
-    fprintf(stdout, "%lu Received from client:\n", tinfo->thread_id);
-    fprintf(stdout, "Name: %s\n", packet.buffer);
-    fprintf(stdout, "X: %u\n", packet.x);
-    fprintf(stdout, "y: %u\n", packet.y);
-
-    switch (packet.flags) {
-    case JOIN:
-      snprintf(packet.buffer, MAXBUFSIZE - 1,
-               "Join flag received. Please wait for the game to start...");
-      break;
-
-    default:
-      snprintf(packet.buffer, MAXBUFSIZE - 1, "Invalid flag received.");
-      close(client_fd);
-      tinfo->sockfd = -1;
-
-      pthread_exit(NULL);
-      break;
-    }
-  }
-
-  numbytes = send(client_fd, &packet, sizeof(packet), 0);
-  if (numbytes == -1) {
-    perror("send");
-    exit(EXIT_FAILURE);
-  }
 
   numbytes = read(client_fd, &packet, sizeof(packet));
   if (numbytes > 0) {
@@ -211,6 +178,13 @@ int main(void) {
 
   printf("server: thread creation attributes initialized\n");
 
+  CircularLinkedList *cll;
+  cll = malloc(sizeof(*cll));
+  if (cll == NULL) {
+    perror("malloc");
+    exit(EXIT_FAILURE);
+  }
+
   for (;;) {
     sin_size = sizeof their_addr;
     new_fd = accept(sockfd, (struct sockaddr *)&their_addr, &sin_size);
@@ -223,42 +197,71 @@ int main(void) {
               s, sizeof s);
     printf("server: got connection from %s\n", s);
 
-    int *client_fd = malloc(sizeof(int));
-    if (client_fd == NULL) {
-      perror("malloc");
-      exit(EXIT_FAILURE);
-    }
-    *client_fd = new_fd;
+    struct DataPacket packet;
+    memset(&packet, 0, sizeof(packet));
 
-    tinfo[tnum].sockfd = new_fd;
+    int numbytes = read(new_fd, &packet, sizeof(packet));
+    if (numbytes > 0) {
+      tinfo->pinfo = packet;
 
-    int err = pthread_create(&tinfo[tnum].thread_id, &attr, &handle_client,
-                             &tinfo[tnum]);
-    if (err != 0) {
-      perror("pthread_create");
-      close(new_fd);
-      exit(EXIT_FAILURE);
-    }
-    tnum++;
+      packet.x = ntohl(packet.x);
+      packet.y = ntohl(packet.y);
 
-    if (tnum >= num_threads - 1) {
-      fprintf(stdout, "Max players reached!\n");
-      pthread_cond_broadcast(&lobby_full);
-      break;
+      fprintf(stdout, "%lu Received from client:\n", tinfo->thread_id);
+      fprintf(stdout, "Name: %s\n", packet.buffer);
+      fprintf(stdout, "X: %u\n", packet.x);
+      fprintf(stdout, "y: %u\n", packet.y);
+
+      switch (packet.flags) {
+      case JOIN:
+        snprintf(packet.buffer, MAXBUFSIZE - 1,
+                 "Join flag received. Please wait for the game to start...");
+        break;
+
+      default:
+        snprintf(packet.buffer, MAXBUFSIZE - 1, "Invalid flag received.");
+        close(new_fd);
+        tinfo->sockfd = -1;
+        continue;
+      }
+
+      int *client_fd = malloc(sizeof(int));
+      if (client_fd == NULL) {
+        perror("malloc");
+        exit(EXIT_FAILURE);
+      }
+
+      *client_fd = new_fd;
+      tinfo[tnum].sockfd = new_fd;
+
+      int err = pthread_create(&tinfo[tnum].thread_id, &attr, &handle_client,
+                               &tinfo[tnum]);
+      if (err != 0) {
+        perror("pthread_create");
+        close(new_fd);
+        exit(EXIT_FAILURE);
+      }
+      tnum++;
+
+      if (tnum >= num_threads - 1) {
+        fprintf(stdout, "Max players reached!\n");
+        pthread_cond_broadcast(&lobby_full);
+        break;
+      }
     }
+    pthread_attr_destroy(&attr);
+
+    fprintf(stdout, "The game is now starting...\n");
+    for (tnum = 0; tnum < num_threads; tnum++) {
+      pthread_cond_signal(&lobby_full);
+      int err = pthread_join(tinfo[tnum].thread_id, NULL);
+      if (err) {
+        printf("ERROR; return code from pthread_join() is %d\n", err);
+      }
+    }
+    free(tinfo);
+
+    printf("Main: program completed. Exiting.\n");
+    exit(EXIT_SUCCESS);
   }
-  pthread_attr_destroy(&attr);
-
-  fprintf(stdout, "The game is now starting...\n");
-  for (tnum = 0; tnum < num_threads; tnum++) {
-    pthread_cond_signal(&lobby_full);
-    int err = pthread_join(tinfo[tnum].thread_id, NULL);
-    if (err) {
-      printf("ERROR; return code from pthread_join() is %d\n", err);
-    }
-  }
-  free(tinfo);
-
-  printf("Main: program completed. Exiting.\n");
-  exit(EXIT_SUCCESS);
 }

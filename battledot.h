@@ -1,5 +1,6 @@
 #include "circular_linked_list.h"
 #include "server.h"
+#include <bits/pthreadtypes.h>
 #include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -7,45 +8,57 @@
 #ifndef BATTLEDOT_DOT_H
 #define BATTLEDOT_DOT_H
 
-typedef struct {
+#define MAX_NAME_LENGTH 17
+
+typedef struct PlayerInfo {
+  uint32_t x;
+  uint32_t y;
+  char name[MAX_NAME_LENGTH];
+} pinfo_t;
+typedef pinfo_t PlayerInfo;
+
+typedef struct PlayerStatus {
   uint32_t flags;
   uint32_t x;
   uint32_t y;
   pthread_cond_t is_changed;
-} PlayerStatus;
+} pstatus_t;
+typedef pstatus_t PlayerStatus;
 
-typedef struct {
-  uint32_t x;
-  uint32_t y;
-  PlayerStatus status;
+typedef struct PlayerInstance {
+  PlayerInfo pinfo;
+  PlayerStatus pstatus;
   pthread_mutex_t statusMutex;
-} PlayerInfo;
+} pinstance_t;
+typedef pinstance_t PlayerInstance;
+
+typedef struct BattleDotConfig {
+  uint32_t flags;
+  size_t max_players;
+  FILE *log;
+} bdot_config_t;
+typedef bdot_config_t BattleDotConfig;
+
+typedef struct BattleDotInstance {
+  BattleDotConfig config;
+  CircularLinkedList player_cll;
+} bdot_instance_t;
+typedef bdot_instance_t BattleDotInstance;
+
+void pinfo_new(PlayerInfo *, uint32_t, uint32_t, char[MAX_NAME_LENGTH]);
+void pstatus_new(PlayerStatus *, pthread_cond_t);
+void pstatus_update(PlayerStatus *, uint32_t, uint32_t, uint32_t);
+void pstatus_clear(PlayerStatus *);
+void pinstance_new(PlayerInstance *, PlayerInfo, PlayerStatus, pthread_mutex_t);
+
+void bdot_config_new(BattleDotConfig *, uint32_t, size_t, FILE *);
+void bdot_instance_new(BattleDotInstance *, BattleDotConfig);
+void bdot_instance_destroy(BattleDotInstance *);
+int bdot_instance_add_player(BattleDotInstance *, PlayerInstance *);
+int bdot_instance_remove_player(BattleDotInstance *, Node);
+void bdot_instance_run(BattleDotInstance *);
 
 void run_game(CircularLinkedList *cll, FILE *fd) {
-  for (Node cur = cll->head; !cll_is_empty(cll);) {
-    PlayerInfo *player = (PlayerInfo *)cur->value;
-    PlayerInfo *next_player = (PlayerInfo *)cur->next->value;
-
-
-    pthread_mutex_lock(&player->statusMutex);
-    if (!(player->status.flags & ATTACK))
-      pthread_cond_wait(&player->status.is_changed, &player->statusMutex);
-
-    fprintf(fd, "flags: %u\nX: %u\nY: %u\n", player->status.flags, player->status.x,
-            player->status.y);
-    uint32_t attack_x = player->x;
-    uint32_t attack_y = player->y;
-    player->status.flags &= 0;
-    pthread_mutex_unlock(&player->statusMutex);
-
-    if(( next_player->x == attack_x ) && (next_player->y == attack_y)) {
-      cll_remove_node(cll, cur->next);
-    }
-
-    cur = cur->next;
-  }
-
-  fprintf(fd, "Game Over!\n");
 }
 
 #endif
