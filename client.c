@@ -111,15 +111,6 @@ int main(int argc, char *argv[]) {
   printf("client: sent \n\tname: %s\n\tx: %u\n\ty: %u\nto %s\n", packet.buffer,
          ntohl(packet.x), ntohl(packet.y), s);
 
-  numbytes = recv(sockfd, &packet, sizeof(packet), 0);
-  if (numbytes == -1) {
-    perror("recv");
-    exit(EXIT_FAILURE);
-  }
-
-  packet.buffer[MAXBUFSIZE - 1] = '\0';
-  printf("client: received '%s'\n", packet.buffer);
-
   for (;;) {
     scanf("Enter X: %u", &packet.x);
     scanf("Enter Y: %u", &packet.y);

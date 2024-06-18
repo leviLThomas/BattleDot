@@ -71,7 +71,7 @@ void *handle_client(void *arg) {
     exit(EXIT_FAILURE);
   }
   close(client_fd);
-  tinfo->sockfd = -1;
+  free(pstatus);
 
   pthread_exit(NULL);
 }
@@ -163,7 +163,7 @@ int main(void) {
   }
 
   if (stack_size > 0) {
-    e = pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+    e = pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
     if (e != 0) {
       perror("pthread_attr_setdetachstate");
       exit(EXIT_FAILURE);
@@ -178,10 +178,8 @@ int main(void) {
 
   printf("server: thread creation attributes initialized\n");
 
-  CircularLinkedList cll;
-
   BattleDotConfig bdot_config;
-  bdot_config_new(&bdot_config, 0, 4, stdout);
+  bdot_config_new(&bdot_config, 0, 2, stdout);
 
   BattleDotInstance bdot_instance;
   bdot_instance_new(&bdot_instance, bdot_config);
@@ -229,6 +227,7 @@ int main(void) {
       pinstance_new(pinstance, pinfo, pstatus);
 
       tinfo[tnum].sockfd = new_fd;
+      tinfo[tnum].pstatus = pstatus;
 
       int err = pthread_create(&tinfo[tnum].thread_id, &attr, &handle_client,
                                &tinfo[tnum]);
@@ -252,6 +251,15 @@ int main(void) {
         break;
       }
     }
+  }
+
+  for (size_t i = 0; i < tnum; i++) {
+    thread_info *t = &tinfo[i];
+    pthread_mutex_lock(&t->pstatus->status_mutex);
+    pstatus_clear(t->pstatus);
+    pstatus_update(t->pstatus, 0, 0, EXIT);
+    pthread_mutex_unlock(&t->pstatus->status_mutex);
+    pthread_join(t->thread_id, NULL);
   }
   pthread_attr_destroy(&attr);
   free(tinfo);

@@ -8,10 +8,8 @@ void cll_new(CircularLinkedList *cll) {
 }
 
 void cll_destroy(CircularLinkedList *cll) {
-  for (Node *cur = cll->head; cur != NULL;) {
-    Node *next = cur->next;
-    free(cur);
-    cur = next;
+  while (cll_get_size(cll) > 0) {
+    cll_pop_back(cll);
   }
 }
 
@@ -22,7 +20,11 @@ int cll_is_empty(const CircularLinkedList *cll) {
 size_t cll_get_size(const CircularLinkedList *cll) { return cll->size; }
 
 Node *cll_push_front(CircularLinkedList *cll, void *element) {
-  Node node = node_new(element);
+  Node *node = malloc(sizeof(Node));
+  if (node == NULL) {
+    return NULL;
+  }
+  node_new(node, element);
 
   if (!cll->head) {
     node->next = node;
@@ -43,8 +45,12 @@ Node *cll_push_front(CircularLinkedList *cll, void *element) {
 
   return node;
 }
-Node cll_push_back(CircularLinkedList *cll, void *element) {
-  Node node = node_new(element);
+Node *cll_push_back(CircularLinkedList *cll, void *element) {
+  Node *node = malloc(sizeof(Node));
+  if (node == NULL) {
+    return NULL;
+  }
+  node_new(node, element);
 
   if (!cll->head) {
     node->next = node;
@@ -63,7 +69,7 @@ Node cll_push_back(CircularLinkedList *cll, void *element) {
 
   return node;
 }
-void *cll_pop_node(CircularLinkedList *cll, Node node) {
+void *cll_pop_node(CircularLinkedList *cll, Node *node) {
   void *element;
   if (!node) {
     return (NULL);
@@ -79,10 +85,10 @@ void *cll_pop_front(CircularLinkedList *cll) {
 void *cll_pop_back(CircularLinkedList *cll) {
   return (cll_pop_node(cll, cll->tail));
 }
-int cll_remove_node(CircularLinkedList *cll, Node node) {
-  Node found = cll_find_node(cll, node);
+int cll_remove_node(CircularLinkedList *cll, Node *node) {
+  Node *found = cll_find_node(cll, node);
   if (found == NULL)
-    return 0;
+    return 1;
 
   if (cll->head == found && cll->tail == found) {
     cll->head = NULL;
@@ -98,26 +104,23 @@ int cll_remove_node(CircularLinkedList *cll, Node node) {
     cll->tail = found->prev;
   }
   cll->size--;
+  free(found);
 
-  return 1;
+  return 0;
 }
-Node cll_find_node(CircularLinkedList *cll, Node target) {
-  for (Node cur = cll->head; cur != cll->tail; cur = cur->next) {
+Node *cll_find_node(const CircularLinkedList *cll, const Node *target) {
+  Node *cur = cll->head;
+  do {
     if (cur == target) {
       return cur;
     }
-  }
+    cur = cur->next;
+  } while (cur != cll->head);
   return NULL;
 }
-Node node_new(void *element) {
-  Node node;
-
+Node *node_new(Node *node, void *element) {
   node->next = NULL;
   node->prev = NULL;
   node->value = element;
   return node;
-}
-
-void node_destroy(Node node) {
-  free(node);
 }

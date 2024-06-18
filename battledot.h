@@ -55,7 +55,7 @@ void bdot_config_new(BattleDotConfig *, uint32_t, size_t, FILE *);
 void bdot_instance_new(BattleDotInstance *, BattleDotConfig);
 void bdot_instance_destroy(BattleDotInstance *);
 int bdot_instance_add_player(BattleDotInstance *, PlayerInstance *);
-int bdot_instance_remove_player(BattleDotInstance *, Node);
+int bdot_instance_remove_player(BattleDotInstance *, Node*);
 void bdot_instance_run(BattleDotInstance *);
 
 #endif
