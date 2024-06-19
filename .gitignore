@@ -1,7 +1,4 @@
-*.o
-client
-server
-server.log
+build/*
+src/compile_commands.json
 .cache/
-compile_commands.json
 
