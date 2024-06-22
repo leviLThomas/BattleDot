@@ -2,19 +2,19 @@
 #ifndef CIRCULAR_LINKED_LIST_DOT_H
 #define CIRCULAR_LINKED_LIST_DOT_H
 
-typedef struct Node {
-  struct Node *next;
-  struct Node *prev;
+typedef struct node Node;
+struct node {
+  Node *next;
+  Node *prev;
   void *value;
-} node_t;
-typedef node_t Node;
+};
 
-typedef struct {
+typedef struct circularLinkedList CircularLinkedList;
+struct circularLinkedList {
   Node *head;
   Node *tail;
   size_t size;
-} cll_t;
-typedef cll_t CircularLinkedList;
+};
 
 /**
  * @brief

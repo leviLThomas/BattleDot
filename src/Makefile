@@ -1,15 +1,16 @@
 BUILD_DIR=../build/
 CC = bear -- gcc
-C_FLAGS=-std=gnu99 -pipe -g -Wall -Wextra -Wpedantic 
+C_FLAGS=-std=gnu99 -pipe -g -Wall -Wextra -Wpedantic
+INCLUDES=-I../include
 LDFLAGS = -pthread
 
 all: client server
 
 client:	client.c 
-	$(CC) $(C_FLAGS) -pthread -o $(BUILD_DIR)client client.c
+	$(CC) $(C_FLAGS) $(INCLUDES) -pthread -o $(BUILD_DIR)client client.c
 
 server:	server.c battledot.c circular_linked_list.c
-	$(CC) $(C_FLAGS) -o $(BUILD_DIR)server server.c battledot.c circular_linked_list.c $(LDFLAGS)
+	$(CC) $(C_FLAGS) $(INCLUDES) -o $(BUILD_DIR)server server.c battledot.c circular_linked_list.c $(LDFLAGS)
 
 test:
 	./server &

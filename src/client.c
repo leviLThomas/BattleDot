@@ -19,53 +19,13 @@ void *get_in_addr(struct sockaddr *sa) {
   return &(((struct sockaddr_in6 *)sa)->sin6_addr);
 }
 
-int main(int argc, char *argv[]) {
-  int sockfd, numbytes;
-  struct addrinfo hints, *servinfo, *p;
+// TODO refactor
+int bdot_connect(void) {
+  int sockfd;
   int rv;
   char s[INET6_ADDRSTRLEN];
+  struct addrinfo hints, *servinfo, *p;
 
-  int opt;
-
-  struct DataPacket packet;
-  memset(&packet, 0, sizeof(packet));
-
-  char buf[MAXDATASIZE];
-  memset(buf, 0, MAXDATASIZE - 1);
-
-  while ((opt = getopt(argc, argv, "h:sjn:x:y:")) != -1) {
-    switch (opt) {
-    case 's':
-      packet.flags |= START;
-      break;
-    case 'j':
-      packet.flags |= JOIN;
-      break;
-    case 'n':
-      strncpy(packet.buffer, optarg, sizeof(packet.buffer));
-      break;
-    case 'x':
-      packet.x = htonl(atoi(optarg));
-      break;
-    case 'y':
-      packet.y = htonl(atoi(optarg));
-      break;
-    default:
-      fprintf(stderr,
-              "usage: %s [-s] or [-j] [-n] name [-x] x_coord [-y] y_coord\n",
-              argv[0]);
-      exit(EXIT_FAILURE);
-    }
-  }
-
-  if (strlen(packet.buffer) < 4 || strlen(packet.buffer) > 16 ||
-      ntohl(packet.x) < 1 || ntohl(packet.x) > 10 || ntohl(packet.y) < 1 ||
-      ntohl(packet.y) > 10) {
-    fprintf(stderr,
-            "usage: %s [-s] or [-j] [-n] name [-x] x_coord [-y] y_coord\n",
-            argv[0]);
-    exit(EXIT_FAILURE);
-  }
   memset(&hints, 0, sizeof(hints));
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_STREAM;
@@ -102,8 +62,50 @@ int main(int argc, char *argv[]) {
             sizeof s);
   printf("client: connecting to %s\n", s);
   freeaddrinfo(servinfo); // all done with this structure
+  return sockfd;
+}
 
-  numbytes = send(sockfd, &packet, sizeof(packet), 0);
+// TODO refactor
+void bdot_parse(struct DataPacket *packet, int argc, char *argv[]) {
+  int opt;
+  while ((opt = getopt(argc, argv, "h:sjn:x:y:")) != -1) {
+    switch (opt) {
+    case 's':
+      packet->flags |= START;
+      break;
+    case 'j':
+      packet->flags |= JOIN;
+      break;
+    case 'n':
+      strncpy(packet->buffer, optarg, sizeof(packet->buffer));
+      break;
+    case 'x':
+      packet->x = htonl(atoi(optarg));
+      break;
+    case 'y':
+      packet->y = htonl(atoi(optarg));
+      break;
+    default:
+      fprintf(stderr,
+              "usage: %s [-s] or [-j] [-n] name [-x] x_coord [-y] y_coord\n",
+              argv[0]);
+    }
+  }
+
+  if (strlen(packet->buffer) < 4 || strlen(packet->buffer) > 16 ||
+      ntohl(packet->x) < 1 || ntohl(packet->x) > 10 || ntohl(packet->y) < 1 ||
+      ntohl(packet->y) > 10) {
+    fprintf(stderr,
+            "usage: %s [-s] or [-j] [-n] name [-x] x_coord [-y] y_coord\n",
+            argv[0]);
+  }
+}
+
+// TODO refactor
+void bdot_client_loop(int serverfd, struct DataPacket packet) {
+  int numbytes;
+  char s[INET6_ADDRSTRLEN];
+  numbytes = send(serverfd, &packet, sizeof(packet), 0);
   if (numbytes == -1) {
     perror("send");
     exit(EXIT_FAILURE);
@@ -115,13 +117,13 @@ int main(int argc, char *argv[]) {
     scanf("Enter X: %u", &packet.x);
     scanf("Enter Y: %u", &packet.y);
     packet.flags |= ATTACK;
-    numbytes = send(sockfd, &packet, sizeof(packet), 0);
+    numbytes = send(serverfd, &packet, sizeof(packet), 0);
     if (numbytes == -1) {
       perror("send");
       exit(EXIT_FAILURE);
     }
 
-    numbytes = recv(sockfd, &packet, sizeof(packet), 0);
+    numbytes = recv(serverfd, &packet, sizeof(packet), 0);
     if (numbytes == -1) {
       perror("recv");
       exit(EXIT_FAILURE);
@@ -133,6 +135,22 @@ int main(int argc, char *argv[]) {
     if (packet.flags & EXIT) // If the server tells us to exit we break;
       break;
   }
+}
+
+// TODO refactor
+int main(int argc, char *argv[]) {
+
+  struct DataPacket packet;
+  memset(&packet, 0, sizeof(packet));
+
+  char buf[MAXDATASIZE];
+  memset(buf, 0, MAXDATASIZE - 1);
+
+  bdot_parse(&packet, argc, argv);
+
+  int sockfd = bdot_connect();
+
+  bdot_client_loop(sockfd, packet);
 
   close(sockfd);
 

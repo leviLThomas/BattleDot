@@ -16,13 +16,10 @@
 #define BACKLOG 10
 #define PORT "8080" // the port client will be connecting to
 
-#define JOIN 0x0001
-#define START 0x0010
-#define EXIT 0x0100
-#define ATTACK 0x1000
+typedef enum { JOIN, EXIT, ATTACK } FLAGS;
 
 struct DataPacket {
-  uint16_t flags;
+  FLAGS flags;
   char buffer[MAXBUFSIZE];
   uint32_t x;
   uint32_t y;
