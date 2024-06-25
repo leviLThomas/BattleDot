@@ -1,12 +1,12 @@
 # BattleDot
 ## Roadmap
-- [] Logging
-- [] Testing
-- [] Cross-Platform
-- [] CI/CD Pipeline
-- [] Serialization
-- [] Docs
-- [] TUI
+- [ ] Logging
+- [ ] Testing
+- [ ] Cross-Platform
+- [ ] CI/CD Pipeline
+- [ ] Serialization
+- [ ] Docs
+- [ ] TUI
 
 ## Original Requirements
 BattleDot is based off an assignment I was given in the past, the original requirements are as follows:
@@ -14,9 +14,9 @@ BattleDot is based off an assignment I was given in the past, the original requi
 ### Technical Requirements
 Please implement a Linux-running program in 
 - [x] C 
-- [] C++ 
-- [] Python 
-- [] Java.
+- [ ] C++ 
+- [ ] Python 
+- [ ] Java.
 The whole implementation needs to start with one command (program/script in any language).
 The game plays by itself after it starts, it is not interactive/does not require input.
 
@@ -35,7 +35,7 @@ The game plays by itself after it starts, it is not interactive/does not require
 - [x] A multi-threaded program, or a multi-process program, where the processes communicate using IPC of your choice.
 - [x] If a process leaves the game (for ex. by an external signal), their neighbors become similarly matched up.
 - [x] The solution must use connections that could work between multiple computers.
-- [] A new player can be added to BattleDotNet by specifying two adjacent nodes in the BattleDotNet.
-- [] Implement without a "master" node - only peer-to-peer
+- [ ] A new player can be added to BattleDotNet by specifying two adjacent nodes in the BattleDotNet.
+- [ ] Implement without a "master" node - only peer-to-peer
 
 
